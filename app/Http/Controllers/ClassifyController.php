@@ -14,7 +14,7 @@ class ClassifyController extends Controller
         try {
             $name = $request->query('name');
 
-            // ✅ Validation
+            // Validation
             if ($name === null || trim($name) === '') {
                 return response()->json([
                     "status" => "error",
@@ -29,7 +29,7 @@ class ClassifyController extends Controller
                 ], 422);
             }
 
-            // ✅ Call Genderize API
+            //  Call Genderize API
             $response = Http::get('https://api.genderize.io', [
                 'name' => $name
             ]);
@@ -43,7 +43,7 @@ class ClassifyController extends Controller
 
             $data = $response->json();
 
-            // ✅ Edge case
+            //  Edge case
             if ($data['gender'] === null || $data['count'] == 0) {
                 return response()->json([
                     "status" => "error",
@@ -51,7 +51,7 @@ class ClassifyController extends Controller
                 ], 422);
             }
 
-            // ✅ Process data
+            //  Process data
             $gender = $data['gender'];
             $probability = $data['probability'];
             $sample_size = $data['count'];
