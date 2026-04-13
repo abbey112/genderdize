@@ -8,4 +8,3 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-Route::get('/classify', [App\Http\Controllers\ClassifyController::class, 'classify']);

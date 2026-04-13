@@ -12,14 +12,14 @@ class ClassifyController extends Controller
      public function classify(Request $request)
     {
         try {
-            $name = $request->query('name');
+            $name = $request->validate(['name' => 'required|string'])['name'];
 
             // Validation
             if ($name === null || trim($name) === '') {
                 return response()->json([
                     "status" => "error",
                     "message" => "Name query parameter is required"
-                ], 400);
+                ], 200);
             }
 
             if (!is_string($name)) {
