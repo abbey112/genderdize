@@ -7,4 +7,4 @@ Route::get('/', function () {
 });
 
 
-Route::get('/classify', [App\Http\Controllers\ClassifyController::class, 'classify']);
+//Route::get('/classify', [App\Http\Controllers\ClassifyController::class, 'classify']);

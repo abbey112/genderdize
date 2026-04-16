@@ -5,12 +5,39 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Profile;
+use App\Http\Resources\ProfileResource;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Ramsey\Uuid\Uuid;
 
 class ProfileController extends Controller
 {
+    public function index()
+    {
+        $profiles = Profile::orderBy('created_at', 'desc')->get();
+        return response()->json([
+            "status" => "success",
+            "data" => ProfileResource::collection($profiles)
+        ], 200);
+    }
+    public function show($id)
+    {
+        $profile = Profile::find($id);
+        if (!$profile) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Profile not found"
+            ], 404);
+        }
+        return response()->json([
+            "status" => "success",
+            "data" => new ProfileResource($profile)
+        ], 200);
+    }
+    public function create()
+    {
+        //
+    }
     public function store(Request $request)
     {
         try {
@@ -39,7 +66,7 @@ class ProfileController extends Controller
                 return response()->json([
                     "status" => "success",
                     "message" => "Profile already exists",
-                    "data" => $existing
+                    "data" => new ProfileResource($existing)
                 ], 200);
             }
 
@@ -118,7 +145,7 @@ class ProfileController extends Controller
 
             return response()->json([
                 "status" => "success",
-                "data" => $profile
+                "data" => new ProfileResource($profile)
             ], 201);
 
         } catch (\Exception $e) {
@@ -128,4 +155,9 @@ class ProfileController extends Controller
             ], 500);
         }
     }
+    public function destroy($id)
+    {
+        //
+    }
+    
 }
