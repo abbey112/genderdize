@@ -20,6 +20,7 @@ return new class extends Migration
         $table->integer('age');
         $table->string('age_group');
         $table->string('country_id');
+        $table->string('country_name');
         $table->float('country_probability');
         $table->timestamp('created_at')->useCurrent();
         });

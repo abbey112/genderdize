@@ -14,5 +14,6 @@ Route::get('/classify', [ClassifyController::class, 'classify']);
 
 Route::post('/profiles', [ProfileController::class, 'store']);
 Route::get('/profiles', [ProfileController::class, 'index']);
+Route::get('/profiles/search', [ProfileController::class, 'search']);
 Route::get('/profiles/{id}', [ProfileController::class, 'show']);
 Route::delete('/profiles/{id}', [ProfileController::class, 'destroy']);

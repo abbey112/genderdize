@@ -12,13 +12,64 @@ use Ramsey\Uuid\Uuid;
 
 class ProfileController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $profiles = Profile::orderBy('created_at', 'desc')->get();
+        $query = Profile::query();
+
+    //Filtering
+    if ($request->gender) {
+        $query->where('gender', $request->gender);
+    }
+    if ($request->age_group) {
+        $query->where('age_group', $request->age_group);
+    }
+    if ($request->country_id) {
+        $query->where('country_id', $request->country_id);
+    }
+    if ($request->min_age) {
+        $query->where('age', '>=', $request->min_age);
+    }
+    if ($request->max_age) {
+        $query->where('age', '<=', $request->max_age);
+    }
+    if ($request->min_gender_probability) {
+        $query->where('gender_probability', '>=', $request->min_gender_probability);
+    }
+    if ($request->min_country_probability) {
+        $query->where('country_probability', '>=', $request->min_country_probability);
+    }
+
+    //Sorting
+    $sortBy = $request->sort_by ?? 'created_at';
+    $order = $request->order ?? 'desc';
+
+    if (!in_array($sortBy, ['age', 'created_at', 'gender_probability'])) {
         return response()->json([
-            "status" => "success",
-            "data" => ProfileResource::collection($profiles)
-        ], 200);
+            "status" => "error",
+            "message" => "Invalid query parameters"
+        ], 422);
+    }
+
+    $query->orderBy($sortBy, $order);
+
+    // Pagination
+    $page = max((int)$request->page, 1);
+    $limit = min((int)$request->limit ?: 10, 50);
+
+    $total = $query->count();
+
+    $data = $query
+        ->skip(($page - 1) * $limit)
+        ->take($limit)
+        ->get();
+
+    return response()->json([
+        "status" => "success",
+        "page" => $page,
+        "limit" => $limit,
+        "total" => $total,
+        "data" => $data
+    ]);
     }
     public function show($id)
     {
@@ -34,10 +85,64 @@ class ProfileController extends Controller
             "data" => new ProfileResource($profile)
         ], 200);
     }
-    public function create()
-    {
-        //
+  public function search(Request $request)
+{
+    $q = strtolower($request->query('q'));
+
+    if (!$q) {
+        return response()->json([
+            "status" => "error",
+            "message" => "Missing query"
+        ], 400);
     }
+
+    $filters = [];
+    // Gender
+    if (str_contains($q, 'male')) $filters['gender'] = 'male';
+    if (str_contains($q, 'female')) $filters['gender'] = 'female';
+
+    // Age group
+    if (str_contains($q, 'child')) $filters['age_group'] = 'child';
+    if (str_contains($q, 'teenager')) $filters['age_group'] = 'teenager';
+    if (str_contains($q, 'adult')) $filters['age_group'] = 'adult';
+    if (str_contains($q, 'senior')) $filters['age_group'] = 'senior';
+
+    // Young
+    if (str_contains($q, 'young')) {
+        $filters['min_age'] = 16;
+        $filters['max_age'] = 24;
+    }
+
+    // Above age
+    if (preg_match('/above (\d+)/', $q, $matches)) {
+        $filters['min_age'] = (int)$matches[1];
+    }
+
+    // Country mapping
+    $countries = [
+        'nigeria' => 'NG',
+        'kenya' => 'KE',
+        'angola' => 'AO',
+        'ghana' => 'GH'
+    ];
+
+    foreach ($countries as $name => $code) {
+        if (str_contains($q, $name)) {
+            $filters['country_id'] = $code;
+        }
+    }
+
+    if (empty($filters)) {
+        return response()->json([
+            "status" => "error",
+            "message" => "Unable to interpret query"
+        ], 422);
+    }
+
+    // Reuse index logic
+    return $this->index(new Request(array_merge($filters, $request->all())));
+}
+
     public function store(Request $request)
     {
         try {
