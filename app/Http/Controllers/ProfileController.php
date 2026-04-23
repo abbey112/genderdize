@@ -18,101 +18,64 @@ class ProfileController extends Controller
 
     // FILTERING (only apply if present)
 
-    if ($request->has('gender')) {
-        $query->where('gender', $request->gender);
-    }
+   if ($request->filled('gender')) {
+    $query->where('gender', $request->gender);
+}
 
-    if ($request->has('age_group')) {
-        $query->where('age_group', $request->age_group);
-    }
+if ($request->filled('age_group')) {
+    $query->where('age_group', $request->age_group);
+}
 
-    if ($request->has('country_id')) {
-        $query->where('country_id', $request->country_id);
-    }
+if ($request->filled('country_id')) {
+    $query->where('country_id', $request->country_id);
+}
 
-    if ($request->has('min_age')) {
-        if (!is_numeric($request->min_age)) {
-            return response()->json([
-                "status" => "error",
-                "message" => "Invalid query parameters"
-            ], 422);
-        }
-        $query->where('age', '>=', $request->min_age);
-    }
+if ($request->filled('min_age')) {
+    $query->where('age', '>=', $request->min_age);
+}
 
-    if ($request->has('max_age')) {
-        if (!is_numeric($request->max_age)) {
-            return response()->json([
-                "status" => "error",
-                "message" => "Invalid query parameters"
-            ], 422);
-        }
-        $query->where('age', '<=', $request->max_age);
-    }
-
-    if ($request->has('min_gender_probability')) {
-        if (!is_numeric($request->min_gender_probability)) {
-            return response()->json([
-                "status" => "error",
-                "message" => "Invalid query parameters"
-            ], 422);
-        }
-        $query->where('gender_probability', '>=', $request->min_gender_probability);
-    }
-
-    if ($request->has('min_country_probability')) {
-        if (!is_numeric($request->min_country_probability)) {
-            return response()->json([
-                "status" => "error",
-                "message" => "Invalid query parameters"
-            ], 422);
-        }
-        $query->where('country_probability', '>=', $request->min_country_probability);
-    }
+if ($request->filled('max_age')) {
+    $query->where('age', '<=', $request->max_age);
+}
 
     // SORTING
 
     $allowedSort = ['age', 'created_at', 'gender_probability'];
-    $allowedOrder = ['asc', 'desc'];
+$allowedOrder = ['asc', 'desc'];
 
-    $sortBy = $request->query('sort_by', 'created_at');
-    $order = $request->query('order', 'desc');
+$sortBy = $request->query('sort_by', 'created_at');
+$order = $request->query('order', 'desc');
 
-    if (!in_array($sortBy, $allowedSort) || !in_array($order, $allowedOrder)) {
-        return response()->json([
-            "status" => "error",
-            "message" => "Invalid query parameters"
-        ], 422);
-    }
+if (!in_array($sortBy, $allowedSort) || !in_array($order, $allowedOrder)) {
+    return response()->json([
+        "status" => "error",
+        "message" => "Invalid query parameters"
+    ], 422);
+}
 
-    $query->orderBy($sortBy, $order);
+$query->orderBy($sortBy, $order);
 
     //PAGINATION
 
-    $page = (int) $request->query('page', 1);
-    $limit = (int) $request->query('limit', 10);
+  $page = max((int) $request->query('page', 1), 1);
+$limit = min((int) $request->query('limit', 10), 50);
 
-    if ($page < 1) $page = 1;
-    if ($limit < 1) $limit = 10;
-    if ($limit > 50) $limit = 50;
+$query = Profile::query();
 
-    // IMPORTANT: clone query before modifying
-    $total = (clone $query)->count();
+$total = (clone $query)->count();
 
-    $data = $query
-        ->skip(($page - 1) * $limit)
-        ->take($limit)
-        ->get();
+$data = $query
+    ->skip(($page - 1) * $limit)
+    ->take($limit)
+    ->get();
 
-    //RESPONSE FORMAT (EXACT)
-
-    return response()->json([
-        "status" => "success",
-        "page" => $page,
-        "limit" => $limit,
-        "total" => $total,
-        "data" => $data
-    ], 200);
+return response()->json([
+    "status" => "success",
+    "page" => $page,
+    "limit" => $limit,
+    "total" => $total,
+    "data" => $data
+], 200);
 }
 
     public function show($id)
@@ -131,60 +94,49 @@ class ProfileController extends Controller
     }
   public function search(Request $request)
 {
-    $q = strtolower($request->query('q'));
+    $q = strtolower(trim($request->query('q', '')));
 
-   if (!$request->has('q') || trim($request->q) === '') {
-    return response()->json([
-        "status" => "error",
-        "message" => "Missing query"
-    ], 400);
-}
-
-    $filters = [];
-    // Gender
-    if (str_contains($q, 'male')) $filters['gender'] = 'male';
-    if (str_contains($q, 'female')) $filters['gender'] = 'female';
-
-    // Age group
-    if (str_contains($q, 'child')) $filters['age_group'] = 'child';
-    if (str_contains($q, 'teenager')) $filters['age_group'] = 'teenager';
-    if (str_contains($q, 'adult')) $filters['age_group'] = 'adult';
-    if (str_contains($q, 'senior')) $filters['age_group'] = 'senior';
-
-    // Young
-    if (str_contains($q, 'young')) {
-        $filters['min_age'] = 16;
-        $filters['max_age'] = 24;
-    }
-
-    // Above age
-    if (preg_match('/above (\d+)/', $q, $matches)) {
-        $filters['min_age'] = (int)$matches[1];
-    }
-
-    // Country mapping
-    $countries = [
-        'nigeria' => 'NG',
-        'kenya' => 'KE',
-        'angola' => 'AO',
-        'ghana' => 'GH'
-    ];
-
-    foreach ($countries as $name => $code) {
-        if (str_contains($q, $name)) {
-            $filters['country_id'] = $code;
-        }
-    }
-
-    if (empty($filters)) {
+    if (!$q) {
         return response()->json([
             "status" => "error",
-            "message" => "Unable to interpret query"
-        ], 422);
+            "message" => "Missing query"
+        ], 400);
     }
 
-    // Reuse index logic
-    return $this->index(new Request(array_merge($filters, $request->all())));
+    $query = Profile::query();
+
+    // gender
+    if (str_contains($q, 'male')) $query->where('gender', 'male');
+    if (str_contains($q, 'female')) $query->where('gender', 'female');
+
+    // age rules
+    if (str_contains($q, 'young')) {
+        $query->whereBetween('age', [16, 24]);
+    }
+
+    if (str_contains($q, 'teen')) {
+        $query->where('age_group', 'teenager');
+    }
+
+    if (str_contains($q, 'adult')) {
+        $query->where('age_group', 'adult');
+    }
+
+    if (preg_match('/above (\d+)/', $q, $matches)) {
+        $query->where('age', '>=', (int)$matches[1]);
+    }
+
+    // country
+    if (str_contains($q, 'nigeria')) $query->where('country_id', 'NG');
+    if (str_contains($q, 'kenya')) $query->where('country_id', 'KE');
+    if (str_contains($q, 'ghana')) $query->where('country_id', 'GH');
+
+    $data = $query->limit(50)->get();
+
+    return response()->json([
+        "status" => "success",
+        "data" => $data
+    ]);
 }
 
     public function store(Request $request)

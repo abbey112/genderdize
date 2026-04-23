@@ -1,0 +1,22 @@
+[
+  {
+    "name": "emmanuel",
+    "gender": "male",
+    "gender_probability": 0.99,
+    "age": 34,
+    "age_group": "adult",
+    "country_id": "NG",
+    "country_name": "Nigeria",
+    "country_probability": 0.85
+  },
+  {
+    "name": "ella",
+    "gender": "female",
+    "gender_probability": 0.98,
+    "age": 28,
+    "age_group": "adult",
+    "country_id": "KE",
+    "country_name": "Kenya",
+    "country_probability": 0.80
+  }
+]
