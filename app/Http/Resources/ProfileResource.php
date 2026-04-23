@@ -24,6 +24,7 @@ class ProfileResource extends JsonResource
                 'age' => $this->age,
                 'age_group' => $this->age_group,
                 'country_id' => $this->country_id,
+                'country_name' => $this->country_name,
                 'country_probability' => $this->country_probability,
                 'created_at' => Carbon::now('UTC')
         ];

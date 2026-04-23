@@ -12,38 +12,73 @@ use Ramsey\Uuid\Uuid;
 
 class ProfileController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Profile::query();
+  public function index(Request $request)
+{
+    $query = Profile::query();
 
-    //Filtering
-    if ($request->gender) {
+    // FILTERING (only apply if present)
+
+    if ($request->has('gender')) {
         $query->where('gender', $request->gender);
     }
-    if ($request->age_group) {
+
+    if ($request->has('age_group')) {
         $query->where('age_group', $request->age_group);
     }
-    if ($request->country_id) {
+
+    if ($request->has('country_id')) {
         $query->where('country_id', $request->country_id);
     }
-    if ($request->min_age) {
+
+    if ($request->has('min_age')) {
+        if (!is_numeric($request->min_age)) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Invalid query parameters"
+            ], 422);
+        }
         $query->where('age', '>=', $request->min_age);
     }
-    if ($request->max_age) {
+
+    if ($request->has('max_age')) {
+        if (!is_numeric($request->max_age)) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Invalid query parameters"
+            ], 422);
+        }
         $query->where('age', '<=', $request->max_age);
     }
-    if ($request->min_gender_probability) {
+
+    if ($request->has('min_gender_probability')) {
+        if (!is_numeric($request->min_gender_probability)) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Invalid query parameters"
+            ], 422);
+        }
         $query->where('gender_probability', '>=', $request->min_gender_probability);
     }
-    if ($request->min_country_probability) {
+
+    if ($request->has('min_country_probability')) {
+        if (!is_numeric($request->min_country_probability)) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Invalid query parameters"
+            ], 422);
+        }
         $query->where('country_probability', '>=', $request->min_country_probability);
     }
 
-    //Sorting
-    $sortBy = $request->sort_by ?? 'created_at';
-    $order = $request->order ?? 'desc';
+    // SORTING
 
-    if (!in_array($sortBy, ['age', 'created_at', 'gender_probability'])) {
+    $allowedSort = ['age', 'created_at', 'gender_probability'];
+    $allowedOrder = ['asc', 'desc'];
+
+    $sortBy = $request->query('sort_by', 'created_at');
+    $order = $request->query('order', 'desc');
+
+    if (!in_array($sortBy, $allowedSort) || !in_array($order, $allowedOrder)) {
         return response()->json([
             "status" => "error",
             "message" => "Invalid query parameters"
@@ -52,16 +87,24 @@ class ProfileController extends Controller
 
     $query->orderBy($sortBy, $order);
 
-    // Pagination
-    $page = max((int)$request->page, 1);
-    $limit = min((int)$request->limit ?: 10, 50);
+    //PAGINATION
 
-    $total = $query->count();
+    $page = (int) $request->query('page', 1);
+    $limit = (int) $request->query('limit', 10);
+
+    if ($page < 1) $page = 1;
+    if ($limit < 1) $limit = 10;
+    if ($limit > 50) $limit = 50;
+
+    // IMPORTANT: clone query before modifying
+    $total = (clone $query)->count();
 
     $data = $query
         ->skip(($page - 1) * $limit)
         ->take($limit)
         ->get();
+
+    //RESPONSE FORMAT (EXACT)
 
     return response()->json([
         "status" => "success",
@@ -69,8 +112,9 @@ class ProfileController extends Controller
         "limit" => $limit,
         "total" => $total,
         "data" => $data
-    ]);
-    }
+    ], 200);
+}
+
     public function show($id)
     {
         $profile = Profile::find($id);
@@ -89,12 +133,12 @@ class ProfileController extends Controller
 {
     $q = strtolower($request->query('q'));
 
-    if (!$q) {
-        return response()->json([
-            "status" => "error",
-            "message" => "Missing query"
-        ], 400);
-    }
+   if (!$request->has('q') || trim($request->q) === '') {
+    return response()->json([
+        "status" => "error",
+        "message" => "Missing query"
+    ], 400);
+}
 
     $filters = [];
     // Gender
