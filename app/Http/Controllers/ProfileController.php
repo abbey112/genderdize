@@ -38,13 +38,37 @@ if ($request->filled('max_age')) {
     $query->where('age', '<=', $request->max_age);
 }
 
+if ($request->filled('min_gender_probability')) {
+    $query->where('gender_probability', '>=', $request->min_gender_probability);
+}
+
+if ($request->filled('min_country_probability')) {
+    $query->where('country_probability', '>=', $request->min_country_probability);
+}
+
+if ($request->filled('gender')) {
+    $query->whereRaw('LOWER(gender) = ?', [strtolower($request->gender)]);
+}
+if ($request->filled('country_id')) {
+    $query->whereRaw('UPPER(country_id) = ?', [strtoupper($request->country_id)]);
+}
+if ($request->filled('age_group')) {
+    $query->whereRaw('LOWER(age_group) = ?', [strtolower($request->age_group)]);
+}
+
     // SORTING
 
     $allowedSort = ['age', 'created_at', 'gender_probability'];
 $allowedOrder = ['asc', 'desc'];
 
-$sortBy = $request->query('sort_by', 'created_at');
-$order = $request->query('order', 'desc');
+
+$sortBy = in_array($request->query('sort_by'), $allowedSort)
+    ? $request->query('sort_by')
+    : 'created_at';
+
+$order = in_array($request->query('order'), $allowedOrder)
+    ? $request->query('order')
+    : 'desc';
 
 if (!in_array($sortBy, $allowedSort) || !in_array($order, $allowedOrder)) {
     return response()->json([
@@ -57,24 +81,23 @@ $query->orderBy($sortBy, $order);
 
     //PAGINATION
 
-  $page = max((int) $request->query('page', 1), 1);
-$limit = min((int) $request->query('limit', 10), 50);
+    $page = max((int) $request->query('page', 1), 1);
+    $limit = min((int) $request->query('limit', 10), 50);
 
-$query = Profile::query();
+    $total = (clone $query)->count();
 
-$total = (clone $query)->count();
+    $data = $query
+        ->skip(($page - 1) * $limit)
+        ->take($limit)
+        ->get();
 
-$data = $query
-    ->skip(($page - 1) * $limit)
-    ->take($limit)
-    ->get();
-
-return response()->json([
+  return response()->json([
     "status" => "success",
-    "page" => $page,
-    "limit" => $limit,
-    "total" => $total,
-    "data" => $data
+     "page" => $page,
+     "limit" => $limit,
+     "total" => $total,
+    "data" => $data,
+   
 ], 200);
 }
 
@@ -132,11 +155,18 @@ return response()->json([
     if (str_contains($q, 'ghana')) $query->where('country_id', 'GH');
 
     $data = $query->limit(50)->get();
+    $page = max((int) $request->query('page', 1), 1);
+    $limit = min((int) $request->query('limit', 10), 50);
 
-    return response()->json([
-        "status" => "success",
-        "data" => $data
-    ]);
+    $total = (clone $query)->count();
+
+ return response()->json([
+    "status" => "success",
+     "page" => $page,
+     "limit" => $limit,
+     "total" => $total,
+    "data" => $data,
+], 200);
 }
 
     public function store(Request $request)
